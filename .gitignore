@@ -1,0 +1,38 @@
+# Dependencies and package manager caches
+node_modules/
+.pnpm-store/
+
+# Build output and generated caches
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Local configuration and secrets; keep the safe configuration template
+.env
+.env.*
+!.env.example
+*.local
+*.pem
+*.key
+
+# Test artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+tmp/
+temp/
+
+# IDE and operating system files
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+Desktop.ini
