@@ -1,9 +1,10 @@
-import { Alert, Button, Card, Col, Form, Pagination, Row, Select, Space, Tag, Typography } from 'antd';
+import { Button, Card, Col, Form, Pagination, Row, Space, Tag, Typography } from 'antd';
 import { EnvironmentOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../api/api';
 import { QueryState } from '../components/QueryState';
 import { ServiceGrid } from '../components/ServiceGrid';
+import { AddressPicker } from '../components/AddressPicker';
 import { formatServiceCount } from '../lib/validation';
 
 export function CatalogPage() {
@@ -15,8 +16,6 @@ export function CatalogPage() {
   const rawPage = Number(params.get('page') || 0);
   const page = Number.isSafeInteger(rawPage) && rawPage >= 0 ? rawPage : 0;
   const categories = api.useCategoriesQuery();
-  const complexes = api.useComplexesQuery();
-  const buildings = api.useBuildingsQuery(complexId!, { skip: !complexId });
   const services = api.useServicesQuery({ categoryId, residentialComplexId: complexId, buildingId, page, size: 12 });
   function change(key: string, value?: string) {
     const next = new URLSearchParams(params);
@@ -31,7 +30,7 @@ export function CatalogPage() {
         <Col xs={24} lg={17}>
           <Tag icon={<EnvironmentOutlined />} color="blue">Рядом с домом</Tag>
           <Typography.Title level={1}>Хорошие соседи.<br />Полезные услуги.</Typography.Title>
-          <Typography.Paragraph className="hero-description">Найдите мастера в своём ЖК или предложите помощь соседям. Без долгой дороги — с прямой связью с исполнителем.</Typography.Paragraph>
+          <Typography.Paragraph className="hero-description">Найдите мастера рядом с домом или предложите помощь соседям. Без долгой дороги — с прямой связью с исполнителем.</Typography.Paragraph>
           <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => navigate('/services/new')}>Предложить услугу</Button>
         </Col>
         <Col xs={24} lg={7} className="hero-note"><Space orientation="vertical" size={16}>
@@ -45,14 +44,10 @@ export function CatalogPage() {
       <Col xs={24} lg={6}>
         <Card title={<><EnvironmentOutlined /> Где ищем?</>} className="filter-card">
           <Form layout="vertical">
-            <Form.Item label="Жилой комплекс"><Select aria-label="Жилой комплекс" allowClear showSearch optionFilterProp="label" placeholder="Все жилые комплексы" value={complexId}
-              loading={complexes.isFetching} options={complexes.data?.map((c) => ({ value: c.id, label: c.name }))} onChange={(v) => change('residentialComplexId', v)} /></Form.Item>
-            <Form.Item label="Дом"><Select aria-label="Дом" allowClear showSearch optionFilterProp="label" placeholder="Все дома" value={buildingId} disabled={!complexId}
-              loading={buildings.isFetching} options={buildings.data?.map((b) => ({ value: b.id, label: b.label ? `${b.label} · ${b.address}` : b.address }))} onChange={(v) => change('buildingId', v)} /></Form.Item>
+            <Form.Item label="Адрес"><AddressPicker aria-label="Адрес поиска" allowClear value={complexId}
+              onChange={(v) => change('residentialComplexId', v)} /></Form.Item>
             <Button block onClick={() => setParams({})}>Сбросить фильтры</Button>
           </Form>
-          <QueryState error={complexes.error || buildings.error} retry={() => { void complexes.refetch(); if (complexId) void buildings.refetch(); }} />
-          {complexes.data?.length === 0 && <Alert type="info" title="Жилые комплексы ещё не добавлены" description="Справочник заполняет администратор сервиса." />}
         </Card>
       </Col>
       <Col xs={24} lg={18}>

@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery, type BaseQueryFn, type FetchArgs, type FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
 import { signedIn, signedOut, type AuthState } from '../app/auth';
-import type { Account, Building, DirectoryItem, Locations, Me, Profile, ProfileRequest, Registration, Search, Service, ServicePage, ServiceRequest, Tokens } from './types';
+import type { Address, AddressCandidate, Account, Building, DirectoryItem, Locations, Me, Profile, ProfileRequest, Registration, Search, Service, ServicePage, ServiceRequest, Tokens } from './types';
 
 const rawQuery = fetchBaseQuery({
   baseUrl: '/api/v1',
@@ -41,6 +41,10 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> =
 export const api = createApi({
   reducerPath: 'neighborhoodApi', baseQuery, tagTypes: ['Me', 'Profile', 'Services'],
   endpoints: (build) => ({
+    searchAddresses: build.query<AddressCandidate[], string>({ query: (q) => ({ url: '/addresses/search', params: { q } }), keepUnusedDataFor: 0 }),
+    reverseAddress: build.query<AddressCandidate[], { latitude: number; longitude: number }>({ query: (params) => ({ url: '/addresses/reverse', params }), keepUnusedDataFor: 0 }),
+    address: build.query<Address, string>({ query: (id) => `/addresses/${id}` }),
+    selectAddress: build.mutation<Address, string>({ query: (key) => ({ url: '/addresses/select', method: 'POST', body: { key } }) }),
     health: build.query<{ status: string }, void>({ query: () => '/health' }),
     complexes: build.query<DirectoryItem[], void>({ query: () => '/residential-complexes' }),
     buildings: build.query<Building[], string>({ query: (id) => `/residential-complexes/${id}/buildings` }),

@@ -1,4 +1,6 @@
 export interface DirectoryItem { id: string; name: string }
+export interface AddressCandidate { key: string; label: string; latitude: number; longitude: number }
+export interface Address { id: string; label: string; latitude: number | null; longitude: number | null }
 export interface Building { id: string; residentialComplexId: string; address: string; label: string | null }
 export interface LocationSelection {
   residentialComplexId: string;

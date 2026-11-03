@@ -2,9 +2,10 @@ import { Alert, App, Button, Card, Form, Input, Select, Space, Typography } from
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/api';
-import type { Locations, Me, ProfileRequest } from '../api/types';
+import type { LocationSelection, Locations, Me, ProfileRequest } from '../api/types';
 import { QueryState } from '../components/QueryState';
 import { LocationFields } from '../components/LocationFields';
+import { AddressLabel } from '../components/AddressPicker';
 import { errorText, httpsRule, isContact } from '../lib/validation';
 
 interface ProfileValues { name: string; photoUrl: string; about: string; telegram: string; whatsapp: string }
@@ -48,25 +49,24 @@ function ProfileForm({ me }: { me: Me }) {
 function LocationsForm({ me }: { me: Me }) {
   const [form] = Form.useForm();
   const { message } = App.useApp();
-  const complexes = api.useComplexesQuery();
+  const selections: LocationSelection[] = Form.useWatch('selections', form) || me.locations.selections;
   const [save, state] = api.useSaveLocationsMutation();
   const [error, setError] = useState<unknown>();
   async function submit(values: Locations) {
     setError(undefined);
     if (!values.selections.some((s) => s.residentialComplexId === values.primaryResidentialComplexId)) {
-      form.setFields([{ name: 'primaryResidentialComplexId', errors: ['Добавьте основной ЖК в список ниже'] }]);
+      form.setFields([{ name: 'primaryResidentialComplexId', errors: ['Выберите основной адрес из списка ниже'] }]);
       return;
     }
     try { await save(values).unwrap(); void message.success('Локации сохранены'); } catch (e) { setError(e); }
   }
   return <Card className="editor-card">
     <Typography.Title level={1}>Мои локации</Typography.Title>
-    <Typography.Paragraph type="secondary">Выберите основной ЖК и дополнительные комплексы. Для каждого можно указать конкретные дома. География услуг настраивается отдельно при публикации.</Typography.Paragraph>
-    <QueryState error={complexes.error} retry={complexes.refetch} />
+    <Typography.Paragraph type="secondary">Добавьте адреса через поиск или карту и выберите основной адрес из добавленных. География услуг настраивается отдельно при публикации.</Typography.Paragraph>
     {error != null && <Alert className="form-alert" type="error" title={errorText(error)} showIcon />}
     <Form form={form} layout="vertical" onFinish={submit} initialValues={me.locations} requiredMark="optional">
-      <Form.Item name="primaryResidentialComplexId" label="Основной жилой комплекс" rules={[{ required: true, message: 'Выберите основной ЖК' }]}>
-        <Select showSearch optionFilterProp="label" placeholder="Выберите ЖК" options={complexes.data?.map((c) => ({ value: c.id, label: c.name }))} />
+      <Form.Item name="primaryResidentialComplexId" label="Основной адрес" rules={[{ required: true, message: 'Выберите основной адрес' }]}>
+        <Select placeholder="Выберите основной адрес" options={[...new Set(selections.map((s) => s.residentialComplexId).filter(Boolean))].map((id) => ({ value: id, label: <AddressLabel id={id} /> }))} />
       </Form.Item>
       <LocationFields name="selections" />
       <Button className="top-gap" type="primary" htmlType="submit" loading={state.isLoading}>Сохранить локации</Button>

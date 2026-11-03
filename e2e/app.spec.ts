@@ -4,7 +4,9 @@ const complexId = '11111111-1111-4111-8111-111111111111';
 const buildingId = '22222222-2222-4222-8222-222222222222';
 const serviceId = '33333333-3333-4333-8333-333333333333';
 const userId = '44444444-4444-4444-8444-444444444444';
-const complexes = [{ id: complexId, name: 'Речной парк' }];
+const addressLabel = 'Москва, Речная улица, 1';
+const candidate = { key: 'osm:W:123', label: addressLabel, latitude: 55.75, longitude: 37.61 };
+const address = { id: complexId, label: addressLabel, latitude: 55.75, longitude: 37.61 };
 const categories = [{ id: 'FOOD', name: 'Еда' }, { id: 'ELECTRICAL', name: 'Электрика' }, { id: 'PLUMBING', name: 'Сантехника' }, { id: 'CLEANING', name: 'Уборка' }, { id: 'REPAIR', name: 'Ремонт' }];
 const coverage = [{ residentialComplexId: complexId, selectionMode: 'ALL_BUILDINGS', buildingIds: [] }];
 const initialProfile = { id: userId, name: 'Анна', photoUrl: null, about: 'Помогаю соседям', primaryResidentialComplexId: complexId, additionalResidentialComplexIds: [], contacts: [{ type: 'TELEGRAM', value: 'https://t.me/neighbor' }] };
@@ -14,6 +16,7 @@ test.beforeEach(async ({ page }) => {
   let profile = structuredClone(initialProfile);
   let service = structuredClone(initialService);
   let locations = { primaryResidentialComplexId: complexId, selections: structuredClone(coverage) };
+  await page.route('https://tile.openstreetmap.org/**', (route) => route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jG1EAAAAASUVORK5CYII=', 'base64') }));
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -23,7 +26,8 @@ test.beforeEach(async ({ page }) => {
     let data: unknown;
     let status = 200;
     if (path === '/categories') data = categories;
-    else if (path === '/residential-complexes') data = complexes;
+    else if (path === '/addresses/search' || path === '/addresses/reverse') data = [candidate];
+    else if (path === '/addresses/select' || path === `/addresses/${complexId}`) data = address;
     else if (path === `/residential-complexes/${complexId}/buildings`) data = [{ id: buildingId, residentialComplexId: complexId, address: 'Речная улица, 1', label: 'Корпус 1' }];
     else if (path === '/auth/login') data = { access_token: 'test-access', refresh_token: 'test-refresh', expires_in: 900, username: userId };
     else if (path === '/auth/register') { data = { id: userId, name: body.name, email: body.email }; status = 201; }
@@ -61,12 +65,9 @@ test('catalog, URL filters, service, messenger and public profile', async ({ pag
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole('button', { name: 'Уборка', exact: true }).click();
   await expect(page).toHaveURL(/categoryId=CLEANING/);
-  await page.getByRole('combobox', { name: 'Жилой комплекс', exact: true }).click();
-  await page.getByRole('option', { name: 'Речной парк', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Адрес поиска' }).fill('Москва Речная 1');
+  await page.getByRole('option', { name: addressLabel, exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`residentialComplexId=${complexId}`));
-  await page.getByRole('combobox', { name: 'Дом', exact: true }).click();
-  await page.getByRole('option', { name: 'Корпус 1 · Речная улица, 1' }).click();
-  await expect(page).toHaveURL(new RegExp(`buildingId=${buildingId}`));
   await page.getByRole('link', { name: 'Уборка квартиры', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Уборка квартиры', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Написать в Telegram' })).toHaveAttribute('href', 'https://t.me/neighbor');
@@ -76,14 +77,15 @@ test('catalog, URL filters, service, messenger and public profile', async ({ pag
   expect(errors).toEqual([]);
 });
 
-test('register with primary complex and require a separate login', async ({ page }) => {
+test('register with searched address and require a separate login', async ({ page }) => {
   await page.goto('/register');
   await page.getByLabel('Как вас зовут').fill('Анна');
   await page.getByLabel('Email', { exact: true }).fill('anna@example.test');
   await page.getByLabel('Пароль', { exact: true }).fill('password-1234');
   await page.getByLabel('Повторите пароль').fill('password-1234');
-  await page.getByLabel('Ваш основной ЖК').click();
-  await page.getByRole('option', { name: 'Речной парк', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Ваш основной адрес' }).fill('Москва Речная 1');
+  await page.getByRole('option', { name: addressLabel, exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Ваш основной адрес' })).toHaveValue('');
   const request = page.waitForRequest((r) => r.url().endsWith('/auth/register') && r.method() === 'POST');
   await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
   expect((await request).postDataJSON()).toEqual({ name: 'Анна', email: 'anna@example.test', password: 'password-1234', primaryResidentialComplexId: complexId });
@@ -104,20 +106,17 @@ test('edit profile, clear contacts and logout', async ({ page }) => {
   const mobileMenu = page.getByRole('button', { name: 'Открыть меню' });
   if (await mobileMenu.isVisible()) await mobileMenu.click();
   await page.getByRole('button', { name: 'Выйти', exact: true }).click();
-  await expect(page).toHaveURL('http://localhost:5173/');
+  await expect(page).toHaveURL(`http://localhost:${process.env.E2E_PORT || '5173'}/`);
   await page.goto('/me');
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test('save selected buildings in location settings', async ({ page }) => {
+test('save address selections in location settings', async ({ page }) => {
   await login(page, '/me/locations');
-  await page.getByRole('radio', { name: 'Выбрать дома' }).check();
-  await page.getByLabel('Выбранные дома').click();
-  await page.getByRole('option', { name: 'Корпус 1 · Речная улица, 1' }).click();
-  await page.getByRole('heading', { name: 'Мои локации' }).click();
+  await expect(page.getByText(addressLabel, { exact: true }).first()).toBeVisible();
   const request = page.waitForRequest((r) => r.url().endsWith('/me/locations') && r.method() === 'PUT');
   await page.getByRole('button', { name: 'Сохранить локации' }).click();
-  expect((await request).postDataJSON()).toEqual({ primaryResidentialComplexId: complexId, selections: [{ residentialComplexId: complexId, selectionMode: 'SELECTED_BUILDINGS', buildingIds: [buildingId] }] });
+  expect((await request).postDataJSON()).toEqual({ primaryResidentialComplexId: complexId, selections: coverage });
   await expect(page.getByText('Локации сохранены', { exact: true })).toBeVisible();
 });
 
@@ -155,4 +154,103 @@ test('empty catalog, server failure, health and not found', async ({ page }) => 
   await expect(page.getByText('Сервер доступен', { exact: true })).toBeVisible();
   await page.goto('/missing-page');
   await expect(page.getByText('Страница не найдена', { exact: true })).toBeVisible();
+});
+
+test('choose an address by clicking the map and confirm the nearby house', async ({ page }, info) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Выбрать на карте' }).click();
+  const map = page.getByRole('region', { name: 'Карта выбора адреса' });
+  await expect(map).toBeVisible();
+  const reverse = page.waitForRequest((r) => r.url().includes('/addresses/reverse?'));
+  await map.click({ position: { x: 120, y: 160 } });
+  const point = new URL((await reverse).url());
+  expect(Number.isFinite(Number(point.searchParams.get('latitude')))).toBe(true);
+  await page.screenshot({ path: info.outputPath('address-map.png'), fullPage: true });
+  await page.getByRole('button', { name: addressLabel, exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`residentialComplexId=${complexId}`));
+});
+
+test('map center lookup supports keyboard users and handles no houses', async ({ page }) => {
+  await page.route('**/api/v1/addresses/reverse?**', (route) => route.fulfill({ json: [] }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Выбрать на карте' }).click();
+  await page.getByRole('button', { name: 'Найти адрес в центре карты' }).click();
+  await expect(page.getByText('В пределах 150 метров нет адреса дома в России.', { exact: false })).toBeVisible();
+});
+
+test('require a suggested address and handle provider and selection errors', async ({ page }) => {
+  await page.route('**/api/v1/addresses/search?**', (route) => route.fulfill({ status: 503, json: {} }));
+  await page.goto('/register');
+  const input = page.getByRole('combobox', { name: 'Ваш основной адрес' });
+  await input.fill('Москва Речная 1');
+  await expect(page.getByText('Не удалось загрузить адреса.', { exact: false })).toBeVisible();
+  await page.route('**/api/v1/addresses/search?**', (route) => route.fulfill({ json: [candidate] }));
+  await page.route('**/api/v1/addresses/select', (route) => route.fulfill({ status: 400, json: {} }));
+  await input.fill('Москва Речная 1а');
+  await page.getByRole('option', { name: addressLabel, exact: true }).click();
+  await expect(page.getByText('Не удалось выбрать адрес.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Создать аккаунт', exact: true }).click();
+  await expect(page.getByText('Выберите адрес из подсказок или на карте', { exact: true })).toBeVisible();
+});
+
+test('prevent duplicate addresses in coverage', async ({ page }) => {
+  await login(page, '/me/locations');
+  await page.getByRole('button', { name: 'Добавить адрес', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Адрес', exact: true }).nth(1).fill('Москва Речная 1');
+  await page.getByRole('option', { name: addressLabel, exact: true }).click();
+  await page.getByRole('button', { name: 'Сохранить локации' }).click();
+  await expect(page.getByText('Адреса не должны повторяться', { exact: true })).toBeVisible();
+});
+
+test('add a new address and make it primary', async ({ page }) => {
+  const secondId = '55555555-5555-4555-8555-555555555555';
+  const secondLabel = 'Москва, Речная улица, 2';
+  const second = { ...address, id: secondId, label: secondLabel };
+  await page.route('**/api/v1/addresses/search?**', (route) => route.fulfill({ json: [{ ...candidate, key: 'osm:W:456', label: secondLabel }] }));
+  await page.route('**/api/v1/addresses/select', (route) => route.fulfill({ json: second }));
+  await page.route(`**/api/v1/addresses/${secondId}`, (route) => route.fulfill({ json: second }));
+  await login(page, '/me/locations');
+  await page.getByRole('button', { name: 'Добавить адрес', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Адрес', exact: true }).nth(1).fill('Москва Речная 2');
+  await page.getByRole('option', { name: secondLabel, exact: true }).click();
+  await expect(page.getByText(secondLabel, { exact: true }).first()).toBeVisible();
+  const primary = page.getByLabel('Основной адрес', { exact: true });
+  await primary.click();
+  const listId = await primary.getAttribute('aria-controls');
+  await page.locator(`[id="${listId}"]`).getByRole('option', { name: secondLabel, exact: true }).click();
+  const request = page.waitForRequest((r) => r.url().endsWith('/me/locations') && r.method() === 'PUT');
+  await page.getByRole('button', { name: 'Сохранить локации' }).click();
+  expect((await request).postDataJSON()).toEqual({ primaryResidentialComplexId: secondId, selections: [...coverage,
+    { residentialComplexId: secondId, selectionMode: 'ALL_BUILDINGS', buildingIds: [] }] });
+});
+
+test('preserve legacy selected houses when saving without changing address', async ({ page }) => {
+  const legacy = [{ residentialComplexId: complexId, selectionMode: 'SELECTED_BUILDINGS', buildingIds: [buildingId] }];
+  await page.route('**/api/v1/me', (route) => route.fulfill({ json: { profile: initialProfile,
+    locations: { primaryResidentialComplexId: complexId, selections: legacy } } }));
+  await login(page, '/me/locations');
+  await expect(page.getByText('Сохранённый ранее выбор домов будет сохранён.', { exact: false })).toBeVisible();
+  const request = page.waitForRequest((r) => r.url().endsWith('/me/locations') && r.method() === 'PUT');
+  await page.getByRole('button', { name: 'Сохранить локации' }).click();
+  expect((await request).postDataJSON()).toEqual({ primaryResidentialComplexId: complexId, selections: legacy });
+});
+
+test('hide stale suggestions after the search text changes', async ({ page }) => {
+  let release!: () => void;
+  const firstResponse = new Promise<void>((resolve) => { release = resolve; });
+  await page.route('**/api/v1/addresses/search?**', async (route) => {
+    const q = new URL(route.request().url()).searchParams.get('q');
+    if (q === 'Москва') { await firstResponse; await route.fulfill({ json: [candidate] }); }
+    else await route.fulfill({ json: [{ ...candidate, key: 'osm:W:789', label: 'Тверь, Советская улица, 1' }] });
+  });
+  await page.goto('/');
+  const input = page.getByRole('combobox', { name: 'Адрес поиска' });
+  const request = page.waitForRequest((r) => r.url().includes('/addresses/search?'));
+  await input.fill('Москва');
+  await request;
+  await input.fill('Тверь');
+  release();
+  await expect(page.getByRole('option', { name: 'Тверь, Советская улица, 1', exact: true })).toBeVisible();
+  await expect(page.getByRole('option', { name: addressLabel, exact: true })).not.toBeVisible();
 });

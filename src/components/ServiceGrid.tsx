@@ -8,7 +8,7 @@ import { formatPrice } from '../lib/validation';
 export function ServiceGrid({ items, editable = false }: { items: ServiceSummary[]; editable?: boolean }) {
   const navigate = useNavigate();
   const { data: categories } = api.useCategoriesQuery();
-  if (!items.length) return <Card><Empty description="Пока нет услуг. Попробуйте выбрать другой ЖК или категорию." /></Card>;
+  if (!items.length) return <Card><Empty description="Пока нет услуг. Попробуйте выбрать другой адрес или категорию." /></Card>;
   return <Row gutter={[20, 20]}>{items.map((service) => <Col xs={24} sm={12} xl={8} key={service.id}>
     <Card className="service-card" cover={service.photoUrls[0]
       ? <Image alt={service.title} src={service.photoUrls[0]} height={170} style={{ objectFit: 'cover' }} preview={false} />

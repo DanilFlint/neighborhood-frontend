@@ -6,20 +6,20 @@ import { api } from '../api/api';
 import { QueryState } from '../components/QueryState';
 import { ServiceGrid } from '../components/ServiceGrid';
 import { Contacts } from './ServicePage';
+import { AddressLabel } from '../components/AddressPicker';
 
 export function UserPage() {
   const { id = '' } = useParams();
   const [page, setPage] = useState(0);
   const profile = api.useProfileQuery(id);
   const services = api.useUserServicesQuery({ id, page });
-  const complexes = api.useComplexesQuery();
   if (profile.isLoading || profile.error || !profile.data) return <QueryState loading={profile.isLoading} error={profile.error} retry={profile.refetch} />;
   const user = profile.data;
   return <Space orientation="vertical" size={28} style={{ width: '100%' }}>
     <Card><Row gutter={[24, 24]} align="middle">
       <Col><Avatar size={88} src={user.photoUrl} icon={<UserOutlined />} /></Col>
       <Col flex="auto"><Typography.Text type="secondary">ВАШ СОСЕД</Typography.Text><Typography.Title level={1}>{user.name}</Typography.Title>
-        <Space wrap>{[user.primaryResidentialComplexId, ...user.additionalResidentialComplexIds].filter(Boolean).map((complexId) => <Tag color="blue" icon={<EnvironmentOutlined />} key={complexId}>{complexes.data?.find((c) => c.id === complexId)?.name || 'Жилой комплекс'}</Tag>)}</Space>
+        <Space wrap>{[user.primaryResidentialComplexId, ...user.additionalResidentialComplexIds].filter(Boolean).map((complexId) => <Tag color="blue" icon={<EnvironmentOutlined />} key={complexId}><AddressLabel id={complexId!} /></Tag>)}</Space>
       </Col>
       <Col xs={24} md={24} lg={10}><Contacts contacts={user.contacts} /></Col>
     </Row>

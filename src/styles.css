@@ -78,3 +78,5 @@ h1.ant-typography { font-size: clamp(28px, 3vw, 38px); letter-spacing: -.9px; ov
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .service-card:hover { transform: none; }
 }
+
+.address-map { height: 360px; width: 100%; border-radius: 8px; z-index: 0; }

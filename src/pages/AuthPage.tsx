@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Form, Input, Select, Space, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
 import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../api/api';
 import { useAppDispatch } from '../app/store';
 import { signedIn } from '../app/auth';
 import { errorText, isPassword } from '../lib/validation';
-import { QueryState } from '../components/QueryState';
+import { AddressPicker } from '../components/AddressPicker';
 import type { Registration } from '../api/types';
 
 export function AuthPage({ register = false }: { register?: boolean }) {
@@ -15,7 +15,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const dispatch = useAppDispatch();
   const [login, loginState] = api.useLoginMutation();
   const [signUp, registerState] = api.useRegisterMutation();
-  const complexes = api.useComplexesQuery(undefined, { skip: !register });
   const [error, setError] = useState<unknown>();
   const [registered, setRegistered] = useState(false);
   const from = typeof location.state?.from === 'string' && location.state.from.startsWith('/') && !location.state.from.startsWith('//') ? location.state.from : '/';
@@ -43,8 +42,6 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     <Typography.Title level={2}>{register ? 'Давайте знакомиться' : 'Рады вас видеть'}</Typography.Title>
     <Typography.Paragraph type="secondary">{register ? 'Создайте аккаунт, чтобы предлагать услуги и помогать соседям.' : 'Войдите, чтобы управлять услугами и своим профилем.'}</Typography.Paragraph>
     {error != null && <Alert className="form-alert" type="error" showIcon title={errorText(error)} />}
-    <QueryState error={complexes.error} retry={complexes.refetch} />
-    {register && complexes.data?.length === 0 && <Alert className="form-alert" type="info" title="Регистрация станет доступна после заполнения справочника ЖК администратором." />}
     <Form layout="vertical" requiredMark="optional" onFinish={submit} size="large">
       {register && <Form.Item name="name" label="Как вас зовут" rules={[{ required: true, whitespace: true, max: 100, message: 'Введите имя, до 100 символов' }]}><Input autoComplete="name" maxLength={100} /></Form.Item>}
       <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', max: 254, message: 'Введите корректный email' }]}><Input prefix={<MailOutlined />} autoComplete="email" type="email" /></Form.Item>
@@ -53,9 +50,9 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       ]}><Input.Password prefix={<LockOutlined />} autoComplete={register ? 'new-password' : 'current-password'} /></Form.Item>
       {register && <>
         <Form.Item name="confirmPassword" label="Повторите пароль" dependencies={['password']} rules={[{ required: true, message: 'Повторите пароль' }, ({ getFieldValue }) => ({ validator: (_, value) => !value || value === getFieldValue('password') ? Promise.resolve() : Promise.reject(new Error('Пароли не совпадают')) })]}><Input.Password autoComplete="new-password" /></Form.Item>
-        <Form.Item name="primaryResidentialComplexId" label="Ваш основной ЖК" rules={[{ required: true, message: 'Выберите жилой комплекс' }]}><Select showSearch optionFilterProp="label" placeholder="Выберите свой ЖК" loading={complexes.isFetching} options={complexes.data?.map((c) => ({ value: c.id, label: c.name }))} /></Form.Item>
+        <Form.Item name="primaryResidentialComplexId" label="Ваш основной адрес" rules={[{ required: true, message: 'Выберите адрес из подсказок или на карте' }]}><AddressPicker aria-label="Ваш основной адрес" /></Form.Item>
       </>}
-      <Button type="primary" htmlType="submit" block loading={loginState.isLoading || registerState.isLoading} disabled={register && !complexes.data?.length}>{register ? 'Создать аккаунт' : 'Войти'}</Button>
+      <Button type="primary" htmlType="submit" block loading={loginState.isLoading || registerState.isLoading}>{register ? 'Создать аккаунт' : 'Войти'}</Button>
     </Form>
     <Typography.Paragraph className="auth-switch">{register ? 'Уже знакомы? ' : 'Ещё нет аккаунта? '}<Link to={register ? '/login' : '/register'} state={{ from }}>{register ? 'Войти' : 'Зарегистрироваться'}</Link></Typography.Paragraph>
   </Card>;

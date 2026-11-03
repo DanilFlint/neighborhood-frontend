@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/api';
 import { useAppSelector } from '../app/store';
 import { QueryState } from '../components/QueryState';
+import { AddressLabel } from '../components/AddressPicker';
 import { formatPrice } from '../lib/validation';
 import { isContact } from '../lib/validation';
 import type { Contact, LocationSelection } from '../api/types';
@@ -15,11 +16,10 @@ export function Contacts({ contacts }: { contacts: Contact[] }) {
 }
 
 function CoverageRow({ selection }: { selection: LocationSelection }) {
-  const { data: complexes } = api.useComplexesQuery();
   const buildings = api.useBuildingsQuery(selection.residentialComplexId, { skip: selection.selectionMode === 'ALL_BUILDINGS' });
   return <Space orientation="vertical" size={4}>
-    <Typography.Text strong><EnvironmentOutlined /> {complexes?.find((c) => c.id === selection.residentialComplexId)?.name || 'Жилой комплекс'}</Typography.Text>
-    {selection.selectionMode === 'ALL_BUILDINGS' ? <Typography.Text type="secondary">Все дома ЖК</Typography.Text> : <>
+    <Typography.Text strong><EnvironmentOutlined /> <AddressLabel id={selection.residentialComplexId} /></Typography.Text>
+    {selection.selectionMode === 'ALL_BUILDINGS' ? <Typography.Text type="secondary">По выбранному адресу</Typography.Text> : <>
       <QueryState loading={buildings.isLoading} error={buildings.error} retry={buildings.refetch} />
       {buildings.data && <Typography.Text type="secondary">{selection.buildingIds.map((id) => { const b = buildings.data?.find((item) => item.id === id); return b ? b.label ? `${b.label} · ${b.address}` : b.address : 'Дом недоступен'; }).join('; ')}</Typography.Text>}
     </>}
