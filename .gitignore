@@ -1,6 +1,5 @@
-# Dependencies and package manager caches
+# Dependencies
 node_modules/
-.pnpm-store/
 
 # Build output and generated caches
 dist/

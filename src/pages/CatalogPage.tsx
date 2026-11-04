@@ -52,7 +52,7 @@ export function CatalogPage() {
       </Col>
       <Col xs={24} lg={18}>
         <Space orientation="vertical" size={20} style={{ width: '100%' }}>
-          <Space wrap className="category-options">
+          <Space wrap>
             <Button type={!categoryId ? 'primary' : 'default'} onClick={() => change('categoryId')}>Все услуги</Button>
             {categories.data?.map((c) => <Button key={c.id} type={categoryId === c.id ? 'primary' : 'default'} onClick={() => change('categoryId', c.id)}>{c.name}</Button>)}
           </Space>

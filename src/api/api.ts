@@ -46,7 +46,6 @@ export const api = createApi({
     address: build.query<Address, string>({ query: (id) => `/addresses/${id}` }),
     selectAddress: build.mutation<Address, string>({ query: (key) => ({ url: '/addresses/select', method: 'POST', body: { key } }) }),
     health: build.query<{ status: string }, void>({ query: () => '/health' }),
-    complexes: build.query<DirectoryItem[], void>({ query: () => '/residential-complexes' }),
     buildings: build.query<Building[], string>({ query: (id) => `/residential-complexes/${id}/buildings` }),
     categories: build.query<DirectoryItem[], void>({ query: () => '/categories' }),
     services: build.query<ServicePage, Search>({ query: (params) => ({ url: '/services', params }), providesTags: ['Services'] }),

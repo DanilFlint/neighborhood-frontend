@@ -15,7 +15,7 @@
 ## Требования и установка
 
 - **Node.js 24 LTS**.
-- **pnpm 11.25.0** (`npm install -g pnpm@11.25.0`, если pnpm ещё не установлен).
+- **npm** (поставляется вместе с Node.js).
 - Backend neighborhood на порту 8080 с настроенными PostgreSQL и JWT-секретами.
 
 Из PowerShell:
@@ -23,13 +23,13 @@
 ```powershell
 git clone https://github.com/DanilFlint/neighborhood-frontend.git
 cd neighborhood-frontend
-pnpm install --frozen-lockfile
+npm ci
 Copy-Item .env.example .env.local
-pnpm dev
+npm start
 ```
 
 Откройте [http://localhost:5173](http://localhost:5173).
-Для обычного повторного запуска достаточно `pnpm dev`.
+Для обычного повторного запуска достаточно `npm start`.
 Lockfile фиксирует версии зависимостей и хранится в репозитории.
 
 В отдельном терминале запустите backend:
@@ -92,7 +92,7 @@ Ant Design **6.6.8**, React Router **7.18.5**, TypeScript, Vite.
 У React [нет отдельного LTS-канала](https://react.dev/community/versioning-policy):
 использован стабильный Latest, без Canary/Experimental. Для Redux выбран
 [официально рекомендуемый Redux Toolkit](https://redux.js.org/introduction/getting-started).
-Node.js использует LTS-линию 24. Точные версии всех зависимостей — в `package.json` и `pnpm-lock.yaml`.
+Node.js использует LTS-линию 24. Точные версии всех зависимостей — в `package.json` и `package-lock.json`.
 
 - `src/api` — типы DTO, RTK Query endpoints, обновление access-токена.
 - `src/app` — store, сессия, маршруты, тема и навигация.
@@ -115,33 +115,27 @@ Access/refresh-токены хранятся только в памяти Redux.
 ## Проверки и сборка
 
 ```powershell
-pnpm test
-pnpm build
-pnpm exec playwright install chromium
-pnpm test:e2e
+npm test
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
 Браузерные проверки используют отдельный dev-сервер на 5173 и перехватывают API:
 они проверяют клиентские сценарии и контракты запросов, но не заменяют сквозную
 проверку с настоящим PostgreSQL/backend. Закройте другой dev-сервер на 5173
 перед их запуском. Для проверки установленного Edge можно задать
-`$env:PLAYWRIGHT_CHANNEL = 'msedge'` перед `pnpm test:e2e`.
+`$env:PLAYWRIGHT_CHANNEL = 'msedge'` перед `npm run test:e2e`.
 
-Чтобы прогнать те же сценарии на собранном `dist/`, после `pnpm build` задайте
-`$env:E2E_PREVIEW = '1'` и запустите `pnpm test:e2e`. После проверки удалите
+Чтобы прогнать те же сценарии на собранном `dist/`, после `npm run build` задайте
+`$env:E2E_PREVIEW = '1'` и запустите `npm run test:e2e`. После проверки удалите
 переменную командой `Remove-Item Env:E2E_PREVIEW` для возврата к dev-серверу.
 
-`pnpm build` проверяет TypeScript и собирает `dist/`.
-`pnpm preview` позволяет посмотреть production-сборку на порту 4173, но **не
-проксирует API**. Для полноценных сценариев используйте `pnpm dev` или production
+`npm run build` проверяет TypeScript и собирает `dist/`.
+`npm run preview` позволяет посмотреть production-сборку на порту 4173, но **не
+проксирует API**. Для полноценных сценариев используйте `npm start` или production
 reverse proxy с `/api` → backend и SPA fallback на `index.html` для остальных путей.
 Секреты backend не должны попадать в `VITE_*` переменные и браузерный bundle.
-
-Проверено 3 ноября 2026 года: `pnpm test` — 8 тестов, `pnpm build` — успешно,
-14 браузерных проверок production-сборки в Edge — успешно (ширина 1440, 393 и
-320 px). Проверки используют тестовые HTTP-ответы; реальный backend в этой
-проверке не запускался. Vite сообщает рекомендательное предупреждение о размере
-общего JS-чанка (~687 kB, ~226 kB gzip); страницы загружаются лениво.
 
 ### Адреса и карта
 
@@ -156,8 +150,3 @@ reverse proxy с `/api` → backend и SPA fallback на `index.html` для о�
 поиск по радиусу и автоматическое сопоставление прежних ЖК новым домам не реализованы.
 
 Для отдельного порта браузерных проверок задайте `$env:E2E_PORT = '5184'`.
-
-Проверено 4 ноября 2026: `pnpm test` — 8 тестов, `pnpm build` — успешно;
-29 браузерных проверок production-сборки в Edge — успешно, включая карту
-и выбор адреса на экранах 1440, 393 и 320 px. Ответы API и тайлы в E2E
-контролируемые; реальный Photon отдельно проверен запросом российского адреса.

@@ -1,2 +1,0 @@
-minimumReleaseAgeExclude:
-  - '@reduxjs/toolkit@2.14.0'

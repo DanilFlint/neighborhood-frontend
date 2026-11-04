@@ -6,7 +6,7 @@ import { api } from '../api/api';
 
 export const createAppStore = () => configureStore({
   reducer: { auth, [api.reducerPath]: api.reducer },
-  middleware: (getDefault) => getDefault({ serializableCheck: { ignoredActions: [] } }).concat(api.middleware),
+  middleware: (getDefault) => getDefault().concat(api.middleware),
   devTools: false,
 });
 export const store = createAppStore();
